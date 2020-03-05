@@ -10,6 +10,7 @@ import cvxpy
 import math
 import numpy as np
 import sys
+import utm
 sys.path.append("../../PathPlanning/CubicSpline/")
 
 try:
@@ -27,7 +28,7 @@ R = np.diag([0.01, 0.01])  # input cost matrix
 Rd = np.diag([0.01, 1.0])  # input difference cost matrix
 Q = np.diag([1.0, 1.0, 0.5, 0.5])  # state cost matrix
 Qf = Q  # state final matrix
-GOAL_DIS = 1.5  # goal distance
+GOAL_DIS = 1.0  # goal distance
 STOP_SPEED = 0.5 / 3.6  # stop speed
 MAX_TIME = 500.0  # max simulation time
 
@@ -41,15 +42,15 @@ N_IND_SEARCH = 10  # Search index number
 DT = 0.2  # [s] time tick
 
 # Vehicle parameters
-LENGTH = 4.5  # [m]
-WIDTH = 2.0  # [m]
-BACKTOWHEEL = 1.0  # [m]
+LENGTH = 2.0  # [m]
+WIDTH = 1.0  # [m]
+BACKTOWHEEL = 0.25  # [m]
 WHEEL_LEN = 0.3  # [m]
-WHEEL_WIDTH = 0.2  # [m]
+WHEEL_WIDTH = 0.15  # [m]
 TREAD = 0.7  # [m]
-WB = 2.5  # [m]
+WB = 1.2  # [m]
 
-MAX_STEER = np.deg2rad(45.0)  # maximum steering angle [rad]
+MAX_STEER = np.deg2rad(60.0)  # maximum steering angle [rad]
 MAX_DSTEER = np.deg2rad(30.0)  # maximum steering speed [rad/s]
 MAX_SPEED = 55.0 / 3.6  # maximum speed [m/s]
 MIN_SPEED = -20.0 / 3.6  # minimum speed [m/s]
@@ -496,6 +497,13 @@ def smooth_yaw(yaw):
 def get_straight_course(dl):
     ax = [0.0, 5.0, 10.0, 20.0, 30.0, 40.0, 50.0]
     ay = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+
+    #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
+    #print(data[:2,])
+    ax,ay,__,__ = utm.from_latlon(data[3:,0],data[3:,1])
+    #print(ax[1],ay[1])
     cx, cy, cyaw, ck, s = cubic_spline_planner.calc_spline_course(
         ax, ay, ds=dl)
 
@@ -553,15 +561,26 @@ def main():
     print(__file__ + " start!!")
 
     dl = 1.0  # course tick
-    # cx, cy, cyaw, ck = get_straight_course(dl)
+    cx, cy, cyaw, ck = get_straight_course(dl)
     # cx, cy, cyaw, ck = get_straight_course2(dl)
     # cx, cy, cyaw, ck = get_straight_course3(dl)
     # cx, cy, cyaw, ck = get_forward_course(dl)
-    cx, cy, cyaw, ck = get_switch_back_course(dl)
+    #cx, cy, cyaw, ck = get_switch_back_course(dl)
 
+
+
+
+
+    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
+    #sp = data[3:,5]
     sp = calc_speed_profile(cx, cy, cyaw, TARGET_SPEED)
+    #initial yaw
+    ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
+    d_ax = ax[0]-ax[2]
+    d_ay = ay[0]-ay[2]
+    init_yaw = math.atan2(d_ay,d_ax)
 
-    initial_state = State(x=cx[0], y=cy[0], yaw=cyaw[0], v=0.0)
+    initial_state = State(x=cx[0], y=cy[0], yaw=0.0, v=0.0)
 
     t, x, y, yaw, v, d, a = do_simulation(
         cx, cy, cyaw, ck, sp, dl, initial_state)

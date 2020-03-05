@@ -12,6 +12,8 @@ Ref:
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import utm
+import math
 sys.path.append("../../PathPlanning/CubicSpline/")
 
 try:
@@ -21,11 +23,11 @@ except:
 
 
 k = 0.5  # control gain
-Kp = 1.0  # speed proportional gain
+Kp = 0.5  # speed proportional gain
 dt = 0.1  # [s] time difference
-L = 2.9  # [m] Wheel base of vehicle
-max_steer = np.radians(30.0)  # [rad] max steering angle
-
+L = 1.2 # [m] Wheel base of vehicle
+max_steer = np.radians(60.0)  # [rad] max steering angle
+goal_dis = 2
 show_animation = True
 
 
@@ -150,16 +152,31 @@ def main():
     #  target course
     ax = [0.0, 100.0, 100.0, 50.0, 60.0]
     ay = [0.0, 0.0, -30.0, -20.0, 0.0]
+    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
+    #print(data[:2,])
+    ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
+    d_ax = ax[0]-ax[3]
+    d_ay = ay[0]-ay[3]
+    init_yaw = math.atan2(d_ay,d_ax)
+    goal = [ax[-1], ay[-1]]
+    #print(ax[1],ay[1])
+    cx, cy, cyaw, ck, __ = cubic_spline_planner.calc_spline_course(
+        ax[3:], ay[3:], ds=0.1)
 
-    cx, cy, cyaw, ck, s = cubic_spline_planner.calc_spline_course(
-        ax, ay, ds=0.1)
-
-    target_speed = 30.0 / 3.6  # [m/s]
+    target_speed = 10.0 / 3.6  # [m/s]
 
     max_simulation_time = 100.0
 
     # Initial state
-    state = State(x=-0.0, y=5.0, yaw=np.radians(20.0), v=0.0)
+    state = State(x=ax[0], y=ay[0], yaw=init_yaw, v=0.0)
+    #initial yaw compensation
+    if state.yaw - cyaw[0] >= math.pi:
+       state.yaw -= math.pi * 2.0
+    elif state.yaw - cyaw[0] <= -math.pi:
+       state.yaw += math.pi * 2.0
+
+
 
     last_idx = len(cx) - 1
     time = 0.0
@@ -176,6 +193,13 @@ def main():
         state.update(ai, di)
 
         time += dt
+        # check goal
+        dx = state.x - goal[0]
+        dy = state.y - goal[1]
+        if math.hypot(dx, dy) <= goal_dis:
+            print("Goal")
+            state.update(0, 0)
+            break
 
         x.append(state.x)
         y.append(state.y)

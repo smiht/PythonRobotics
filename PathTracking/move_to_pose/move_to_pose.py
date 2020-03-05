@@ -117,9 +117,9 @@ def main():
         x_start = 20 * random()
         y_start = 20 * random()
         theta_start = 2 * np.pi * random() - np.pi
-        x_goal = 20 * random()
-        y_goal = 20 * random()
-        theta_goal = 2 * np.pi * random() - np.pi
+        x_goal = x_start+5#20 * random()
+        y_goal = y_start+7#20 * random()
+        theta_goal = theta_start #2 * np.pi * random() - np.pi
         print("Initial x: %.2f m\nInitial y: %.2f m\nInitial theta: %.2f rad\n" %
               (x_start, y_start, theta_start))
         print("Goal x: %.2f m\nGoal y: %.2f m\nGoal theta: %.2f rad\n" %

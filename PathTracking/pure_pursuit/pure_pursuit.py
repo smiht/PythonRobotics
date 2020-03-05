@@ -9,6 +9,8 @@ author: Atsushi Sakai (@Atsushi_twi)
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+import utm
+import sys
 
 # Parameters
 k = 0.1  # look forward gain
@@ -18,7 +20,12 @@ dt = 0.1  # [s] time tick
 WB = 2.9  # [m] wheel base of vehicle
 
 show_animation = True
+sys.path.append("../../PathPlanning/CubicSpline/")
 
+try:
+    import cubic_spline_planner
+except:
+    raise
 
 class State:
 
@@ -142,18 +149,53 @@ def plot_arrow(x, y, yaw, length=1.0, width=0.5, fc="r", ec="k"):
                   fc=fc, ec=ec, head_width=width, head_length=width)
         plt.plot(x, y)
 
+def get_straight_course(dl):
+    #ax = [0.0, 5.0, 10.0, 20.0, 30.0, 40.0, 50.0]
+    #ay = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
+
+    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
+    #print(data[:2,])
+    ax,ay,__,__ = utm.from_latlon(data[4:,0],data[4:,1])
+    #print(ax[1],ay[1])
+    cx, cy, cyaw, ck, s = cubic_spline_planner.calc_spline_course(
+        ax, ay, ds=dl)
+
+    return cx, cy, cyaw, ck
 def main():
     #  target course
-    cx = np.arange(0, 50, 0.5)
-    cy = [math.sin(ix / 5.0) * ix / 2.0 for ix in cx]
+    #cx = np.arange(0, 50, 0.5)
+    #cy = [math.sin(ix / 5.0) * ix / 2.0 for ix in cx]
+
+    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
+    #get initail yaw
+    ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
+
+    #print(ax,ay)
+    d_ax = ax[0]-ax[2]
+    d_ay = ay[0]-ay[2]
+    init_yaw = math.atan2(d_ay,d_ax)
+    # get the simulated path
+    dl = 1.0  # course tick
+    cx, cy, cyaw, ck = get_straight_course(dl)
+
+
+
 
     target_speed = 10.0 / 3.6  # [m/s]
 
     T = 100.0  # max simulation time
 
     # initial state
-    state = State(x=-0.0, y=-3.0, yaw=0.0, v=0.0)
+    state = State(x=ax[0], y=ay[0], yaw=init_yaw, v=0.0)
+
+  #initial yaw compensation
+    if state.yaw - cyaw[0] >= math.pi:
+        state.yaw -= math.pi * 2.0
+    elif state.yaw - cyaw[0] <= -math.pi:
+        state.yaw += math.pi * 2.0
 
     lastIndex = len(cx) - 1
     time = 0.0

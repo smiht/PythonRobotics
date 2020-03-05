@@ -11,6 +11,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as la
+import utm
 
 sys.path.append("../../PathPlanning/CubicSpline/")
 
@@ -182,12 +183,17 @@ def calc_nearest_index(state, cx, cy, cyaw):
     return ind, mind
 
 
-def do_simulation(cx, cy, cyaw, ck, speed_profile, goal):
+def do_simulation(cx, cy, cyaw, ck, speed_profile, goal,ax,ay):
     T = 500.0  # max simulation time
     goal_dis = 0.3
     stop_speed = 0.05
+    #init yaw calc
+    d_ax = ax[0]-ax[2]
+    d_ay = ay[0]-ay[2]
+    init_yaw = math.atan2(d_ay,d_ax)
 
-    state = State(x=-0.0, y=-0.0, yaw=0.0, v=0.0)
+
+    state = State(x=ax[0], y=ay[0], yaw=init_yaw, v=0.0)
 
     time = 0.0
     x = [state.x]
@@ -271,17 +277,23 @@ def calc_speed_profile(cyaw, target_speed):
 
 def main():
     print("LQR steering control tracking start!!")
-    ax = [0.0, 6.0, 12.5, 10.0, 17.5, 20.0, 25.0]
-    ay = [0.0, -3.0, -5.0, 6.5, 3.0, 0.0, 0.0]
+    #ax = [0.0, 6.0, 12.5, 10.0, 17.5, 20.0, 25.0]
+    #ay = [0.0, -3.0, -5.0, 6.5, 3.0, 0.0, 0.0]
+
+    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
+    #print(data[:2,])
+    ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
+
+
     goal = [ax[-1], ay[-1]]
 
     cx, cy, cyaw, ck, s = cubic_spline_planner.calc_spline_course(
-        ax, ay, ds=0.1)
+        ax[3:], ay[3:], ds=0.1)
     target_speed = 10.0 / 3.6  # simulation parameter km/h -> m/s
 
     sp = calc_speed_profile(cyaw, target_speed)
 
-    t, x, y, yaw, v = do_simulation(cx, cy, cyaw, ck, sp, goal)
+    t, x, y, yaw, v = do_simulation(cx, cy, cyaw, ck, sp, goal,ax,ay)
 
     if show_animation:  # pragma: no cover
         plt.close()
