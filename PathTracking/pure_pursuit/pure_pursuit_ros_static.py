@@ -18,12 +18,13 @@ from gps_common.msg import GPSFix
 from scipy.spatial.transform import Rotation as R
 # Parameters
 k = 0.1  # look forward gain
-Lfc = 2.0  # [m] look-ahead distance
+Lfc = 1.0  # [m] look-ahead distance
 Kp = 1.0  # speed proportional gain
 dt = 0.1  # [s] time tick
 WB = 2.9  # [m] wheel base of vehicle
 
 show_animation = True
+two_line_angle = False
 sys.path.append("../../PathPlanning/CubicSpline/")
 
 try:
@@ -157,7 +158,23 @@ def pure_pursuit_steer_control(state, trajectory, pind):
 
     alpha = math.atan2(ty - state.rear_y, tx - state.rear_x) - state.yaw
 
-    delta = math.atan2(2.0 * WB * math.sin(alpha) / Lf, 1.0)*(180/math.pi)
+    # using two line angle
+    if two_line_angle == True:
+      if ind+1<len(trajectory.cx):
+         tx2 = trajectory.cx[ind+1]
+         ty2 = trajectory.cy[ind+1]
+      else:
+         tx2=tx
+         ty2=ty
+      v_1 = [tx-state.rear_x,ty-state.rear_y]
+      v_2 = [tx2-state.rear_x,ty2-state.rear_y]
+      cross = np.cross(v_1, v_2)
+      alpha = math.atan2(np.hypot(cross[1],cross[2]), np.dot(v_1, v_2)); # delta angle to be rotated
+
+
+
+    # compute angle needs to be rotated 
+    delta = math.atan2(2.0 * WB * math.sin(alpha) / Lf, 1.0)*(180/math.pi) # delta angle for wheel
     #delta= math.atan2(alpha*WB,state.v)
 
     return delta, ind
@@ -181,8 +198,8 @@ def get_straight_course(dl):
     #ay = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 
-    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
-    #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
+    data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    #data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #print(data[:2,])
     ax,ay,__,__ = utm.from_latlon(data[4:,0],data[4:,1])
     #print(ax[1],ay[1])
@@ -195,7 +212,7 @@ def main():
     #cx = np.arange(0, 50, 0.5)
     #cy = [math.sin(ix / 5.0) * ix / 2.0 for ix in cx]
 
-    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #get initail yaw
     ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
