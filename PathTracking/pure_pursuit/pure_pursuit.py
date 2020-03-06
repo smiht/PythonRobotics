@@ -20,7 +20,7 @@ dt = 0.1  # [s] time tick
 WB = 2.9  # [m] wheel base of vehicle
 
 two_line_angle = False
-parham_pp = True
+parham_pp = False
 show_animation = True
 sys.path.append("../../PathPlanning/CubicSpline/")
 
@@ -143,10 +143,10 @@ def pure_pursuit_steer_control(state, trajectory, pind):
          tx2=tx
          ty2=ty
 
-      m1 =(ty-state.rear_y)/(tx-rear_x)
+      m1 =(ty-state.rear_y)/(tx-state.rear_x)
       m2 =(ty2-ty)/(tx2-tx)
 
-      alpha = math.atan2(math.abs(m1-m2)/(1+m1*m2),1)
+      alpha = math.atan2(abs(m1-m2)/(1+m1*m2),1)
     elif parham_pp == True:
       ex = state.rear_x - tx
       ey = state.rear_y - ty

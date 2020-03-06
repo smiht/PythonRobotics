@@ -24,7 +24,7 @@ dt = 0.1  # [s] time tick
 WB = 2.9  # [m] wheel base of vehicle
 
 show_animation = True
-two_line_angle = False
+two_line_angle = True
 sys.path.append("../../PathPlanning/CubicSpline/")
 
 try:
@@ -62,10 +62,14 @@ class State:
         return math.hypot(dx, dy)
     def gps_callback(self,msg):
         self.x,self.y,__,__ = utm.from_latlon(msg.latitude,msg.longitude)
-        r = R.from_quat([self.imu_msg.orientation.w,self.imu_msg.orientation.x,self.imu_msg.orientation.y,self.imu_msg.orientation.z])
-        eulars = r.as_euler('zyx',degrees=False)
-        print(eulars[1])
-        self.yaw = eulars[1]
+        if np.sum([self.imu_msg.orientation.w,self.imu_msg.orientation.x,self.imu_msg.orientation.y,self.imu_msg.orientation.z])!=0:
+
+          r = R.from_quat([self.imu_msg.orientation.w,self.imu_msg.orientation.x,self.imu_msg.orientation.y,self.imu_msg.orientation.z])
+          eulars = r.as_euler('zyx',degrees=False)
+        else:
+          eulars = np.array([0, 0, 0])
+        #print(eulars[1])
+        self.yaw = eulars[0]
         self.v = msg.speed
         self.rear_x = self.x
         self.rear_y = self.y
@@ -169,11 +173,12 @@ def pure_pursuit_steer_control(state, trajectory, pind):
       v_1 = [tx-state.rear_x,ty-state.rear_y]
       v_2 = [tx2-state.rear_x,ty2-state.rear_y]
       cross = np.cross(v_1, v_2)
-      alpha = math.atan2(np.hypot(cross[1],cross[2]), np.dot(v_1, v_2)); # delta angle to be rotated
+      alpha = math.atan2(np.sqrt(cross**2), np.dot(v_1, v_2)); # delta angle to be rotated
+      m1 =(ty-state.rear_y)/(tx-state.rear_x)
+      m2 =(ty2-ty)/(tx2-tx)
+      alpha = math.atan2(abs(m1-m2)/(1+m1*m2),1)
 
-
-
-    # compute angle needs to be rotated 
+    # compute angle needs to be rotated
     delta = math.atan2(2.0 * WB * math.sin(alpha) / Lf, 1.0)*(180/math.pi) # delta angle for wheel
     #delta= math.atan2(alpha*WB,state.v)
 
