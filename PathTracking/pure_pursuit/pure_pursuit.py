@@ -36,7 +36,7 @@ class State:
         self.v = v
         self.rear_x = self.x - ((WB / 2) * math.cos(self.yaw))
         self.rear_y = self.y - ((WB / 2) * math.sin(self.yaw))
-
+        print(self.x,self.y)
     def update(self, a, delta):
         self.x += self.v * math.cos(self.yaw) * dt
         self.y += self.v * math.sin(self.yaw) * dt
