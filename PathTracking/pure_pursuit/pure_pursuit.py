@@ -14,14 +14,17 @@ import sys
 
 # Parameters
 k = 0.1  # look forward gain
-Lfc = 2.0  # [m] look-ahead distance
+Lfc = 3.0  # [m] look-ahead distance
 Kp = 1.0  # speed proportional gain
 dt = 0.1  # [s] time tick
-WB = 2.9  # [m] wheel base of vehicle
+WB = 1.2 # [m] wheel base of vehicle
 
 two_line_angle = False
 parham_pp = False
 show_animation = True
+stanely = True
+max_steer = np.radians(60.0)  # [rad] max steering angle
+goal_dis = 2
 sys.path.append("../../PathPlanning/CubicSpline/")
 
 try:
@@ -40,9 +43,13 @@ class State:
         self.rear_y = self.y - ((WB / 2) * math.sin(self.yaw))
         #print(self.x,self.y)
     def update(self, a, delta):
+        if stanely == True:
+           delta = np.clip(delta, -max_steer, max_steer)
         self.x += self.v * math.cos(self.yaw) * dt
         self.y += self.v * math.sin(self.yaw) * dt
         self.yaw += self.v / WB * math.tan(delta) * dt
+        if stanely == True:
+           self.yaw = normalize_angle(self.yaw)
         self.v += a * dt
         self.rear_x = self.x - ((WB / 2) * math.cos(self.yaw))
         self.rear_y = self.y - ((WB / 2) * math.sin(self.yaw))
@@ -98,8 +105,8 @@ class TargetCourse:
             distance_this_index = state.calc_distance(self.cx[ind],
                                                       self.cy[ind])
             while True:
-                if (ind + 1) < len(self.cx):
-                    break
+                #if (ind + 1) < len(self.cx):
+                #    break
                 distance_next_index = state.calc_distance(self.cx[ind + 1],
                                                           self.cy[ind + 1])
                 if distance_this_index < distance_next_index:
@@ -190,7 +197,7 @@ def get_straight_course(dl):
     #ay = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 
-    data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #print(data[:2,])
     ax,ay,__,__ = utm.from_latlon(data[4:,0],data[4:,1])
@@ -199,22 +206,87 @@ def get_straight_course(dl):
         ax, ay, ds=dl)
 
     return cx, cy, cyaw, ck
+def stanley_control(state, cx, cy, cyaw, last_target_idx):
+    """
+    Stanley steering control.
+
+    :param state: (State object)
+    :param cx: ([float])
+    :param cy: ([float])
+    :param cyaw: ([float])
+    :param last_target_idx: (int)
+    :return: (float, int)
+    """
+    current_target_idx, error_front_axle = calc_target_index(state, cx, cy)
+
+    if last_target_idx >= current_target_idx:
+        current_target_idx = last_target_idx
+
+    # theta_e corrects the heading error
+    theta_e = normalize_angle(cyaw[current_target_idx] - state.yaw)
+    # theta_d corrects the cross track error
+    theta_d = np.arctan2(k * error_front_axle, state.v)
+    # Steering control
+    delta = theta_e + theta_d
+
+    return delta, current_target_idx
+def normalize_angle(angle):
+    """
+    Normalize an angle to [-pi, pi].
+
+    :param angle: (float)
+    :return: (float) Angle in radian in [-pi, pi]
+    """
+    while angle > np.pi:
+        angle -= 2.0 * np.pi
+
+    while angle < -np.pi:
+        angle += 2.0 * np.pi
+
+    return angle
+
+def calc_target_index(state, cx, cy):
+    """
+    Compute index in the trajectory list of the target.
+
+    :param state: (State object)
+    :param cx: [float]
+    :param cy: [float]
+    :return: (int, float)
+    """
+    # Calc front axle position
+    fx = state.x + WB * np.cos(state.yaw)
+    fy = state.y + WB * np.sin(state.yaw)
+
+    # Search nearest point index
+    dx = [fx - icx for icx in cx]
+    dy = [fy - icy for icy in cy]
+    d = np.hypot(dx, dy)
+    target_idx = np.argmin(d)
+
+    # Project RMS error onto front axle vector
+    front_axle_vec = [-np.cos(state.yaw + np.pi / 2),
+                      -np.sin(state.yaw + np.pi / 2)]
+    error_front_axle = np.dot([dx[target_idx], dy[target_idx]], front_axle_vec)
+
+    return target_idx, error_front_axle
+
 def main():
     #  target course
     #cx = np.arange(0, 50, 0.5)
     #cy = [math.sin(ix / 5.0) * ix / 2.0 for ix in cx]
 
-    data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #get initail yaw
     ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
 
     #print(ax,ay)
-    d_ax = ax[0]-ax[2]
-    d_ay = ay[0]-ay[2]
+    d_ax = ax[0]-ax[3]
+    d_ay = ay[0]-ay[3]
     init_yaw = math.atan2(d_ay,d_ax)
     # get the simulated path
-    dl = 1.0  # course tick
+    dl = 0.1  # course tick
     cx, cy, cyaw, ck = get_straight_course(dl)
 
 
@@ -240,12 +312,20 @@ def main():
     target_course = TargetCourse(cx, cy)
     target_ind, _ = target_course.search_target_index(state)
 
+    if stanely == True:
+       target_idx, _ = calc_target_index(state, cx, cy)
+
     while T >= time and lastIndex > target_ind:
 
         # Calc control input
         ai = proportional_control(target_speed, state.v)
-        di, target_ind = pure_pursuit_steer_control(
-            state, target_course, target_ind)
+
+        if stanely == True:
+           di, target_idx = stanley_control(state, cx, cy, cyaw, target_idx)
+        else:
+           di, target_ind = pure_pursuit_steer_control(state, target_course, target_ind)
+
+
 
         state.update(ai, di)  # Control vehicle
 
