@@ -17,11 +17,12 @@ from sensor_msgs.msg import Imu
 from gps_common.msg import GPSFix
 from scipy.spatial.transform import Rotation as R
 # Parameters
-k = 0.1  # look forward gain
+k = 1  # look forward gain
 Lfc = 1.0  # [m] look-ahead distance
 Kp = 1.0  # speed proportional gain
 dt = 0.1  # [s] time tick
-WB = 2.9  # [m] wheel base of vehicle
+WB = 1.2 # [m] wheel base of vehicle
+
 
 show_animation = True
 two_line_angle = True

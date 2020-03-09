@@ -13,8 +13,8 @@ import utm
 import sys
 
 # Parameters
-k = 0.1  # look forward gain
-Lfc = 3.0  # [m] look-ahead distance
+k = 1  # look forward gain
+Lfc = 1.0  # [m] look-ahead distance
 Kp = 1.0  # speed proportional gain
 dt = 0.1  # [s] time tick
 WB = 1.2 # [m] wheel base of vehicle
@@ -22,7 +22,7 @@ WB = 1.2 # [m] wheel base of vehicle
 two_line_angle = False
 parham_pp = False
 show_animation = True
-stanely = True
+stanely = False
 max_steer = np.radians(60.0)  # [rad] max steering angle
 goal_dis = 2
 sys.path.append("../../PathPlanning/CubicSpline/")
@@ -197,7 +197,7 @@ def get_straight_course(dl):
     #ay = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 
-    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/09032020straight.csv', delimiter=',')
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #print(data[:2,])
     ax,ay,__,__ = utm.from_latlon(data[4:,0],data[4:,1])
@@ -276,7 +276,7 @@ def main():
     #cx = np.arange(0, 50, 0.5)
     #cy = [math.sin(ix / 5.0) * ix / 2.0 for ix in cx]
 
-    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/09032020straight.csv', delimiter=',')
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #get initail yaw
     ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
@@ -292,12 +292,12 @@ def main():
 
 
 
-    target_speed = 10.0 / 3.6  # [m/s]
+    target_speed =5.0 / 3.6  # [m/s]
 
     T = 100.0  # max simulation time
 
     # initial state
-    state = State(x=ax[0], y=ay[0], yaw=init_yaw, v=0.0)
+    state = State(x=ax[0], y=ay[0], yaw=0.0, v=0.0)
 
   #initial yaw compensation
     if state.yaw - cyaw[0] >= math.pi:
