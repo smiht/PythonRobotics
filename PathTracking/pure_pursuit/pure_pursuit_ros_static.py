@@ -19,7 +19,7 @@ from sensor_msgs.msg import Imu
 from gps_common.msg import GPSFix
 from scipy.spatial.transform import Rotation as R
 import time as t
-# Parameters
+# Parameter
 k = 1.0  # look forward gain
 Lfc = 1.0  # [m] look-ahead distance
 Kp = 1.0  # speed proportional gain

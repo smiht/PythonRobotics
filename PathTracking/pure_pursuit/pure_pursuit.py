@@ -197,7 +197,11 @@ def get_straight_course(dl):
     #ay = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 
+<<<<<<< HEAD
     data = np.genfromtxt('/home/jd/matlab_code/simulinkObstacleAvoidance/again_09032020_straight.csv', delimiter=',')
+=======
+    data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/09032020straight.csv', delimiter=',')
+>>>>>>> d0c5faa6915bd90ec6d39ff73917d9a717416160
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #print(data[:2,])
     ax,ay,__,__ = utm.from_latlon(data[4:,0],data[4:,1])
@@ -276,7 +280,11 @@ def main():
     #cx = np.arange(0, 50, 0.5)
     #cy = [math.sin(ix / 5.0) * ix / 2.0 for ix in cx]
 
+<<<<<<< HEAD
     data = np.genfromtxt('/home/jd/matlab_code/simulinkObstacleAvoidance/again_09032020_straight.csv', delimiter=',')
+=======
+    data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/09032020straight.csv', delimiter=',')
+>>>>>>> d0c5faa6915bd90ec6d39ff73917d9a717416160
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #get initail yaw
     ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
@@ -293,7 +301,7 @@ def main():
 
 
 
-    target_speed = 10.0 / 3.6  # [m/s]
+    target_speed =5.0 / 3.6  # [m/s]
 
     T = 100.0  # max simulation time
 
