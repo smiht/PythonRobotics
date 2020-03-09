@@ -14,8 +14,12 @@ import matplotlib.pyplot as plt
 import sys
 import utm
 import math
+import rospy
+from geometry_msgs.msg import Twist
+from sensor_msgs.msg import Imu
+from gps_common.msg import GPSFix
 from scipy.spatial.transform import Rotation as R
-
+import time as sys_time
 sys.path.append("../../PathPlanning/CubicSpline/")
 
 try:
@@ -46,11 +50,17 @@ class State:
     def __init__(self, x=0.0, y=0.0, yaw=0.0, v=0.0):
         """Instantiate the object."""
         #super(State, self).__init__()
+        self.cmd_pub = rospy.Publisher("/lawn_mower_cmd_vel",Twist,queue_size = 10)
+        self.imu_msg = Imu()
+        self.gps_msg = GPSFix()
+        self.cmd_vel= Twist()
+        self.cmd_vel.linear.x = 0
+        self.cmd_vel.angular.z = 0
         self.x = x
         self.y = y
-        self.yaw = yaw
+        self.yaw =yaw
         self.v = v
-
+        print("state initialized",self.x,self.y,self.v)
     def update(self, acceleration, delta):
         """
         Update the state of the vehicle.
@@ -60,14 +70,34 @@ class State:
         :param acceleration: (float) Acceleration
         :param delta: (float) Steering
         """
+        # steering angle received from controller and tobe sent to to robot car
         delta = np.clip(delta, -max_steer, max_steer)
-
+        # car model updating its poistion after getting the delta from teh controller
         self.x += self.v * np.cos(self.yaw) * dt
         self.y += self.v * np.sin(self.yaw) * dt
         self.yaw += self.v / L * np.tan(delta) * dt
         self.yaw = normalize_angle(self.yaw)
         self.v += acceleration * dt
+    def gps_callback(self,msg):
+        self.x,self.y,__,__ = utm.from_latlon(msg.latitude,msg.longitude)
+        if np.sum([self.imu_msg.orientation.w,self.imu_msg.orientation.x,self.imu_msg.orientation.y,self.imu_msg.orientation.z])!=0:
 
+          r = R.from_quat([self.imu_msg.orientation.w,self.imu_msg.orientation.x,self.imu_msg.orientation.y,self.imu_msg.orientation.z])
+          eulars = r.as_euler('zyx',degrees=False)
+        else:
+          eulars = np.array([0, 0, 0])
+        #print(eulars[1])
+        self.yaw = normalize_angle(eulars[0])
+        self.v = msg.speed
+        #print(msg.latitude)
+    def imu_callback(self,msg):
+        self.imu_msg= msg
+        #print(msg.orientation.x)
+    def publish(self,speed,delta):
+        #delta = np.clip(delta, -max_steer, max_steer)
+        self.cmd_vel.linear.x = speed
+        self.cmd_vel.angular.z = np.clip(self.cmd_vel.angular.z + delta,-max_steer,max_steer)
+        self.cmd_pub.publish(self.cmd_vel)
 
 def pid_control(target, current):
     """
@@ -121,21 +151,6 @@ def normalize_angle(angle):
 
     return angle
 
-def normalize_angle_arr(angle_arr):
-    """
-    Normalize an angle to [-pi, pi].
-
-    :param angle: (float)
-    :return: (float) Angle in radian in [-pi, pi]
-    """
-    for l in range(0,len(angle_arr)):
-           while angle_arr[l] > np.pi:
-               angle_arr[l] -= 2.0 * np.pi
-
-           while angle_arr[l] < -np.pi:
-               angle_arr[l] += 2.0 * np.pi
-
-    return angle_arr
 
 def calc_target_index(state, cx, cy):
     """
@@ -167,38 +182,23 @@ def calc_target_index(state, cx, cy):
 def main():
     """Plot an example of Stanley steering control on a cubic spline."""
     #  target course
-    ax = [0.0, 100.0, 100.0, 50.0, 60.0]
-    ay = [0.0, 0.0, -30.0, -20.0, 0.0]
-    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_heading_angle.csv', delimiter=',')
+    #ax = [0.0, 100.0, 100.0, 50.0, 60.0]
+    #ay = [0.0, 0.0, -30.0, -20.0, 0.0]
+    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
-    #print(data[:,8])
+    #print(data[:2,])
     ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
-    ayaw = normalize_angle_arr(data[1:,8]*(math.pi/180))
-    #print(ayaw)
-    #self.x,self.y,__,__ = utm.from_latlon(msg.latitude,msg.longitude)
-    #if np.sum([,self.imu_msg.orientation.x,self.imu_msg.orientation.y,self.imu_msg.orientation.z])!=0:
-    #r = R.from_quat(data[2:,(6,3,4,5)])
-    #eulars = r.as_euler('zyx',degrees=False)
-    #print(eulars)
-    #ayaw = normalize_angle(np.append(0,eulars[1:,0]))
-    #else:
-     #eulars = np.array([0, 0, 0])
-
-
     d_ax = ax[0]-ax[3]
     d_ay = ay[0]-ay[3]
     init_yaw = math.atan2(d_ay,d_ax)
-    #init_yaw = ayaw[0]
     goal = [ax[-1], ay[-1]]
     #print(ax[1],ay[1])
-    cx, cy, cyaw, ck, __ = cubic_spline_planner.calc_spline_course(ax[3:], ay[3:], ds=0.1)
-    #cx = ax[3:]
-    #cy = ay[3:]
-    #cyaw = ayaw[3:]
+    cx, cy, cyaw, ck, __ = cubic_spline_planner.calc_spline_course(
+        ax[3:], ay[3:], ds=0.1)
 
     target_speed = 5.0 / 3.6  # [m/s]
 
-    max_simulation_time = 100.0
+    max_simulation_time = 110.0
 
     # Initial state
     state = State(x=ax[0], y=ay[0], yaw=init_yaw, v=0.0)
@@ -218,19 +218,26 @@ def main():
     v = [state.v]
     t = [0.0]
     target_idx, _ = calc_target_index(state, cx, cy)
-
-    while max_simulation_time >= time and last_idx > target_idx:
-        ai = pid_control(target_speed, state.v)
+    rospy.init_node("Follower")
+    rate = rospy.Rate(10)
+    print("time 0")
+    state.publish(target_speed,0)
+    sys_time.sleep(10)
+    print("time 10")
+    #while max_simulation_time >= time and last_idx > target_idx:
+    while not rospy.is_shutdown():
+        rospy.Subscriber("/gps",GPSFix , state.gps_callback)
+        rospy.Subscriber("/imu/data",Imu,state.imu_callback)
+        #ai = pid_control(target_speed, state.v)
         di, target_idx = stanley_control(state, cx, cy, cyaw, target_idx)
-        state.update(ai, di)
-
-        time += dt
+        #state.update(ai, di)
+        state.publish(target_speed,di)
         # check goal
         dx = state.x - goal[0]
         dy = state.y - goal[1]
         if math.hypot(dx, dy) <= goal_dis:
             print("Goal")
-            state.update(0, 0)
+            state.publish(0, 0)
             break
 
         x.append(state.x)

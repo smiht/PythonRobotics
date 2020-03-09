@@ -15,6 +15,11 @@ import sys
 import utm
 import math
 import rospy
+from geometry_msgs.msg import Twist
+from sensor_msgs.msg import Imu
+from gps_common.msg import GPSFix
+from scipy.spatial.transform import Rotation as R
+import time as sys_time
 sys.path.append("../../PathPlanning/CubicSpline/")
 
 try:
@@ -93,6 +98,20 @@ class State:
         self.cmd_vel.linear.x = speed
         self.cmd_vel.angular.z = np.clip(self.cmd_vel.angular.z + delta,-max_steer,max_steer)
         self.cmd_pub.publish(self.cmd_vel)
+class leader_buffer:
+    def __init__(self):
+        self.buffer.x = [0]
+        self.buffer.y = [0]
+        self.buffer.v =[0]
+        slef.buffer.heading = [0]
+    def current_segment(self,state):
+        self.curr_start_ind = 0
+        self.curr_end_ind = 0
+        return self.curr_start_ind, self.curr_end_ind
+    def push(self,msg):
+
+    def pop(self):
+
 
 def pid_control(target, current):
     """
@@ -191,7 +210,7 @@ def main():
     cx, cy, cyaw, ck, __ = cubic_spline_planner.calc_spline_course(
         ax[3:], ay[3:], ds=0.1)
 
-    target_speed = 10.0 / 3.6  # [m/s]
+    target_speed = 5.0 / 3.6  # [m/s]
 
     max_simulation_time = 110.0
 
@@ -215,7 +234,10 @@ def main():
     target_idx, _ = calc_target_index(state, cx, cy)
     rospy.init_node("Follower")
     rate = rospy.Rate(10)
-
+    print("time 0")
+    state.publish(target_speed,0)
+    sys_time.sleep(10)
+    print("time 10")
     #while max_simulation_time >= time and last_idx > target_idx:
     while not rospy.is_shutdown():
         rospy.Subscriber("/gps",GPSFix , state.gps_callback)
