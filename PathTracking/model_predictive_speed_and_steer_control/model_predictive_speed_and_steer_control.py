@@ -499,7 +499,7 @@ def get_straight_course(dl):
     ay = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 
-    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    data = np.genfromtxt('/home/jd/09032020straight.csv', delimiter=',')
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #print(data[:2,])
     ax,ay,__,__ = utm.from_latlon(data[3:,0],data[3:,1])
@@ -571,7 +571,7 @@ def main():
 
 
 
-    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    data = np.genfromtxt('/home/jd/09032020straight.csv', delimiter=',')
     #sp = data[3:,5]
     sp = calc_speed_profile(cx, cy, cyaw, TARGET_SPEED)
     #initial yaw
@@ -580,7 +580,7 @@ def main():
     d_ay = ay[0]-ay[2]
     init_yaw = math.atan2(d_ay,d_ax)
 
-    initial_state = State(x=cx[0], y=cy[0], yaw=0.0, v=0.0)
+    initial_state = State(x=cx[0], y=cy[0], yaw= init_yaw, v=0.0)
 
     t, x, y, yaw, v, d, a = do_simulation(
         cx, cy, cyaw, ck, sp, dl, initial_state)

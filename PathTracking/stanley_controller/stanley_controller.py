@@ -169,11 +169,11 @@ def main():
     #  target course
     ax = [0.0, 100.0, 100.0, 50.0, 60.0]
     ay = [0.0, 0.0, -30.0, -20.0, 0.0]
-    data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/curved_gps_imu_heading_angle.csv', delimiter=',')
+    data = np.genfromtxt('/home/jd/09032020straight.csv', delimiter=',')
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #print(data[:,8])
     ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
-    ayaw = normalize_angle_arr(data[1:,8]*(math.pi/180))
+    #ayaw = normalize_angle_arr(data[1:,8]*(math.pi/180))
     #print(ayaw)
     #self.x,self.y,__,__ = utm.from_latlon(msg.latitude,msg.longitude)
     #if np.sum([,self.imu_msg.orientation.x,self.imu_msg.orientation.y,self.imu_msg.orientation.z])!=0:
@@ -185,13 +185,13 @@ def main():
      #eulars = np.array([0, 0, 0])
 
 
-    d_ax = ax[0]-ax[3]
-    d_ay = ay[0]-ay[3]
+    d_ax = ax[0]-ax[2]
+    d_ay = ay[0]-ay[2]
     init_yaw = math.atan2(d_ay,d_ax)
     #init_yaw = ayaw[0]
     goal = [ax[-1], ay[-1]]
     #print(ax[1],ay[1])
-    cx, cy, cyaw, ck, __ = cubic_spline_planner.calc_spline_course(ax[3:], ay[3:], ds=0.1)
+    cx, cy, cyaw, ck, __ = cubic_spline_planner.calc_spline_course(ax[2:], ay[2:], ds=0.1)
     #cx = ax[3:]
     #cy = ay[3:]
     #cyaw = ayaw[3:]

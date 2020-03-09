@@ -1,3 +1,4 @@
+
 """
 
 Path tracking simulation with pure pursuit steering and PID speed control.
@@ -13,18 +14,21 @@ import utm
 import sys
 import rospy
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Vector3Stamped
 from sensor_msgs.msg import Imu
 from gps_common.msg import GPSFix
 from scipy.spatial.transform import Rotation as R
+import time as t
 # Parameters
-k = 0.1  # look forward gain
+k = 1.0  # look forward gain
 Lfc = 1.0  # [m] look-ahead distance
 Kp = 1.0  # speed proportional gain
 dt = 0.1  # [s] time tick
-WB = 2.9  # [m] wheel base of vehicle
+WB = 1.2  # [m] wheel base of vehicle
 
-show_animation = True
+show_animation = False
 two_line_angle = True
+TARGET_SPEED = 15.0
 sys.path.append("../../PathPlanning/CubicSpline/")
 
 try:
@@ -35,7 +39,7 @@ except:
 class State:
     def __init__(self, x=0.0, y=0.0, yaw=0.0, v=0.0):
         self.cmd_pub = rospy.Publisher("/lawn_mower_cmd_vel",Twist,queue_size = 10)
-        self.imu_msg = Imu()
+        self.imu_msg = Vector3Stamped()
         self.gps_msg = GPSFix()
         self.cmd_vel= Twist()
         self.cmd_vel.linear.x = 0
@@ -62,14 +66,15 @@ class State:
         return math.hypot(dx, dy)
     def gps_callback(self,msg):
         self.x,self.y,__,__ = utm.from_latlon(msg.latitude,msg.longitude)
-        if np.sum([self.imu_msg.orientation.w,self.imu_msg.orientation.x,self.imu_msg.orientation.y,self.imu_msg.orientation.z])!=0:
+        #if np.sum([self.imu_msg.orientation.w,self.imu_msg.orientation.x,self.imu_msg.orientation.y,self.imu_msg.orientation.z])!=0:
 
-          r = R.from_quat([self.imu_msg.orientation.w,self.imu_msg.orientation.x,self.imu_msg.orientation.y,self.imu_msg.orientation.z])
-          eulars = r.as_euler('zyx',degrees=False)
-        else:
-          eulars = np.array([0, 0, 0])
+         # r = R.from_quat([self.imu_msg.orientation.w,self.imu_msg.orientation.x,self.imu_msg.orientation.y,self.imu_msg.orientation.z])
+         # eulars = r.as_euler('zyx',degrees=False)
+        #else:
+         # eulars = np.arraalphay([0, 0, 0])
         #print(eulars[1])
-        self.yaw = eulars[0]
+        #self.yaw = eulars[0]
+        self.yaw = self.imu_msg.vector.z
         self.v = msg.speed
         self.rear_x = self.x
         self.rear_y = self.y
@@ -79,7 +84,7 @@ class State:
         #print(msg.orientation.x)
     def publish(self,speed,delta):
         self.cmd_vel.linear.x = speed
-        self.cmd_vel.angular.z = self.cmd_vel.angular.z + delta
+        self.cmd_vel.angular.z =  delta
         self.cmd_pub.publish(self.cmd_vel)
 
 class States:
@@ -179,6 +184,7 @@ def pure_pursuit_steer_control(state, trajectory, pind):
       alpha = math.atan2(abs(m1-m2)/(1+m1*m2),1)
 
     # compute angle needs to be rotated
+
     delta = math.atan2(2.0 * WB * math.sin(alpha) / Lf, 1.0)*(180/math.pi) # delta angle for wheel
     #delta= math.atan2(alpha*WB,state.v)
 
@@ -203,7 +209,7 @@ def get_straight_course(dl):
     #ay = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 
-    data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    data = np.genfromtxt('/home/jd/09032020straight.csv', delimiter=',')
     #data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #print(data[:2,])
     ax,ay,__,__ = utm.from_latlon(data[4:,0],data[4:,1])
@@ -217,28 +223,31 @@ def main():
     #cx = np.arange(0, 50, 0.5)
     #cy = [math.sin(ix / 5.0) * ix / 2.0 for ix in cx]
 
-    data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/curved_gps_imu_ref_john_deer.csv', delimiter=',')
+    data = np.genfromtxt('/home/jd/09032020straight.csv', delimiter=',')
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #get initail yaw
     ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
-
+    ayaw = data[1:,5]
     #print(ax,ay)
     d_ax = ax[0]-ax[2]
     d_ay = ay[0]-ay[2]
     init_yaw = math.atan2(d_ay,d_ax)
+
     # get the simulated path
     dl = 1.0  # course tick
-    cx, cy, cyaw, ck = get_straight_course(dl)
+    #cx, cy, cyaw, ck = get_straight_course(dl)
+    cx = ax
+    cy = ay
+    cyaw= ayaw
 
 
 
-
-    target_speed = 10.0 / 3.6  # [m/s]
+    target_speed = TARGET_SPEED / 3.6  # [m/s]
 
     T = 100.0  # max simulation time
 
     # initial state
-    state = State(x=ax[0], y=ay[0], yaw = init_yaw, v=0.0)
+    state = State(x=ax[0], y=ay[0], yaw = 0.0, v=0.0)
 
   #initial yaw compensation
     if state.yaw - cyaw[0] >= math.pi:
@@ -254,10 +263,14 @@ def main():
     target_course = TargetCourse(cx, cy)
     target_ind, _ = target_course.search_target_index(state)
     rospy.init_node("Follower")
+    rospy.Subscriber("/gps",GPSFix , state.gps_callback)
+    rospy.Subscriber("/imu/rpy",Vector3Stamped,state.imu_callback)
+    t.sleep(1)
+
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         rospy.Subscriber("/gps",GPSFix , state.gps_callback)
-        rospy.Subscriber("/imu/data",Imu,state.imu_callback)
+        rospy.Subscriber("/imu/rpy",Vector3Stamped,state.imu_callback)
 
         #ai = proportional_control(target_speed, state.v)
         di, target_ind = pure_pursuit_steer_control(
