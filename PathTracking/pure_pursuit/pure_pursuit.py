@@ -47,7 +47,7 @@ class State:
            delta = np.clip(delta, -max_steer, max_steer)
         self.x += self.v * math.cos(self.yaw) * dt
         self.y += self.v * math.sin(self.yaw) * dt
-        self.yaw += self.v / WB * math.tan(delta) * dt
+        self.yaw += math.tan(delta) * dt * self.v / WB
         if stanely == True:
            self.yaw = normalize_angle(self.yaw)
         self.v += a * dt
@@ -174,7 +174,8 @@ def pure_pursuit_steer_control(state, trajectory, pind):
     if parham_pp==True:
         delta = math.atan2(- etheta * WB, state.v)
     else:
-        delta = math.atan2(2.0 * WB * math.sin(alpha) / Lf, 1.0)
+        # delta = math.atan2(2.0 * WB * math.sin(alpha) / Lf, 1.0)
+        delta = math.atan2(1 * WB * alpha / Lf, 1.0)
 
     return delta, ind
 

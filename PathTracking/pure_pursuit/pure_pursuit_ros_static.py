@@ -180,7 +180,7 @@ def pure_pursuit_steer_control(state, trajectory, pind):
       alpha = math.atan2(abs(m1-m2)/(1+m1*m2),1)
 
     # compute angle needs to be rotated
-    delta = math.atan2(2.0 * WB * math.sin(alpha) / Lf, 1.0)*(180/math.pi) # delta angle for wheel
+    delta = math.atan2(2.0 * WB * math.sin(alpha) / Lf, 1.0) # delta angle for wheel
     #delta= math.atan2(alpha*WB,state.v)
 
     return delta, ind
