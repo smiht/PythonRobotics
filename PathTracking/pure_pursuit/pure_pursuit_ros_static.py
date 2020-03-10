@@ -235,10 +235,10 @@ def main():
 
     # get the simulated path
     dl = 1.0  # course tick
-    #cx, cy, cyaw, ck = get_straight_course(dl)
-    cx = ax
-    cy = ay
-    cyaw= ayaw
+    cx, cy, cyaw, ck = get_straight_course(dl)
+    #cx = ax
+    #cy = ay
+    #cyaw= ayaw
 
 
 
