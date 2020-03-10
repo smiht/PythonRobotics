@@ -28,7 +28,7 @@ except:
     raise
 
 
-k = 0.5  # control gain
+k = 0.1  # control gain
 Kp = 0.5  # speed proportional gain
 dt = 0.1  # [s] time difference
 L = 1.2 # [m] Wheel base of vehicle

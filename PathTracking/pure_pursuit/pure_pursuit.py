@@ -13,8 +13,8 @@ import utm
 import sys
 
 # Parameters
-k = 1  # look forward gain
-Lfc = 1.0  # [m] look-ahead distance
+k = 1.0  # look forward gain
+Lfc = 2.0  # [m] look-ahead distance
 Kp = 1.0  # speed proportional gain
 dt = 0.1  # [s] time tick
 WB = 1.2 # [m] wheel base of vehicle
@@ -198,6 +198,7 @@ def get_straight_course(dl):
     #ay = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
 
+
     data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/09032020straight.csv', delimiter=',')
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #print(data[:2,])
@@ -277,14 +278,18 @@ def main():
     #cx = np.arange(0, 50, 0.5)
     #cy = [math.sin(ix / 5.0) * ix / 2.0 for ix in cx]
 
+
+    #data = np.genfromtxt('/home/jd/matlab_code/simulinkObstacleAvoidance/again_09032020_straight.csv', delimiter=',')
     data = np.genfromtxt('/home/iisri/matlabCode/git_repo_new/simulinkObstacleAvoidance/09032020straight.csv', delimiter=',')
+
     #data = np.genfromtxt('/home/iisri/matlab_files/git_repo/simulinkObstacleAvoidance/ref_gps+imu_johndeer.csv', delimiter=',')
     #get initail yaw
     ax,ay,__,__ = utm.from_latlon(data[1:,0],data[1:,1])
 
     #print(ax,ay)
-    d_ax = ax[0]-ax[3]
-    d_ay = ay[0]-ay[3]
+    goal = [ax[-1], ay[-1]]
+    d_ax = ax[0]-ax[2]
+    d_ay = ay[0]-ay[2]
     init_yaw = math.atan2(d_ay,d_ax)
     # get the simulated path
     dl = 0.1  # course tick
@@ -326,7 +331,13 @@ def main():
         else:
            di, target_ind = pure_pursuit_steer_control(state, target_course, target_ind)
 
-
+        # check goal
+        dx = state.x - goal[0]
+        dy = state.y - goal[1]
+        if math.hypot(dx, dy) <= goal_dis:
+            print("Goal")
+            state.update(0, 0)
+            break
 
         state.update(ai, di)  # Control vehicle
 
